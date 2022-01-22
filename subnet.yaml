@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This is the template for creating Subnets for Infrastructure
+
+Parameters:
+  ApplicationName:
+    Description: Name of the application
+    Type: String
+  VPCId:
+    Description: VPC ID for setting up the subnet in the same
+    Type: String
+
+Resources:
+  InfraSubnetPublic:    
+    Type: AWS::EC2::Subnet
+    Properties: 
+      CidrBlock: 10.0.0.0/26
+      VpcId: !Ref VPCId
+  InfraSubnetPrivate:    
+    Type: AWS::EC2::Subnet
+    Properties: 
+      CidrBlock: 10.0.0.0/26
+      VpcId: !Ref VPCId
+
+## Outputs:
