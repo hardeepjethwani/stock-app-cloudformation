@@ -1,1 +1,19 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This is the template for creating VPC
 
+Parameters:
+  ApplicationName:
+    Description: Name of the application
+    Type: String
+  VPCCIDR:
+    Description: Cidr Range for VPC
+    Type: String
+
+Resources:
+  VPC:
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      Parameters: 
+        VPCCIDR : !Ref VPCCIDR
+        ApplicationName: !Ref ApplicationName
+      TemplateURL: infrastructure/vpc.yaml
