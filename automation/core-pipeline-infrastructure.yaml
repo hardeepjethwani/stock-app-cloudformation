@@ -1,0 +1,140 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This is the template for creating Pipeline for deploying infra to AWS
+
+Parameters:
+  ArtifactBucketNAme:
+    Description: Bucket name for storing artifacts
+    Type: String
+    Default: temp-harry-buck
+  ApplicationName:
+    Description: Application name
+    Type: String
+    Default: demoapp
+  GithubToken:
+    Description: Tokrm to access git repo
+    Type: String
+    Default: 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
+  RepositoryOwner:
+    Description: Owner of repository from which code is to pulled
+    Type: String
+    Default: hardeepjethwani
+  RepositoryName:
+    Description: Name of the code Repository
+    Type: String
+    Default: stock-app-cloudformation
+  ApplicationStackName:
+    Description: Name of the stack that you want to deploy
+    Type: String
+    Default: demostacky
+
+
+Resources:
+  PipelineExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: '*'
+                Resource: '*'
+
+  ArtifactStoreBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Ref: ArtifactBucketNAme
+      AccessControl: Private
+  CloudformationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: cloudformation.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess #TODO: Reduce permissions
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codepipeline.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Location: !Ref ArtifactStoreBucket
+        Type: S3
+      Name: !Sub ${ApplicationName}_pipeline
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: 1
+              Configuration:
+                Owner: !Ref RepositoryOwner
+                Repo: !Ref RepositoryName
+                PollForSourceChanges: "false"
+                Branch: "master"
+                OAuthToken: !Ref GithubToken
+              OutputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
+        - Name: Deploy
+          Actions:
+            - Name: CloudFormationDeploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceCode
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                Capabilities: CAPABILITY_IAM
+                RoleArn: !GetAtt CloudformationRole.Arn
+                StackName: !Ref ApplicationStackName
+                TemplatePath: !Sub "SourceCode::infrastructure::s3-sample.yaml"
+              RunOrder: 1
+
+  GithubWebhook:
+    Type: 'AWS::CodePipeline::Webhook'
+    Properties:
+      Authentication: GITHUB_HMAC
+      AuthenticationConfiguration:
+        SecretToken: !Ref GithubToken
+      RegisterWithThirdParty: 'true'
+      Filters:
+        - JsonPath: "$.ref"
+          MatchEquals: refs/heads/{Branch}
+      TargetPipeline: !Ref CodePipeline
+      TargetAction: Source
+      TargetPipelineVersion: !GetAtt CodePipeline.Version

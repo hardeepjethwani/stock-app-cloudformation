@@ -1,0 +1,12 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This is the template for creating Pipeline for deploying infra to AWS
+
+
+Resources:
+
+  ArtifactStoreBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "hardeep-demo-buck"
+      AccessControl: Private
+      DeletionPolicy: Retain
