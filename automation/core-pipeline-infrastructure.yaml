@@ -13,7 +13,6 @@ Parameters:
   GithubToken:
     Description: Tokrm to access git repo
     Type: String
-    Default: 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
   RepositoryOwner:
     Description: Owner of repository from which code is to pulled
     Type: String
@@ -102,7 +101,7 @@ Resources:
                 Owner: !Ref RepositoryOwner
                 Repo: !Ref RepositoryName
                 PollForSourceChanges: "false"
-                Branch: "master"
+                Branch: "main"
                 OAuthToken: !Ref GithubToken
               OutputArtifacts:
                 - Name: SourceCode
