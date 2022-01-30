@@ -5,51 +5,19 @@ Parameters:
   ArtifactBucketNAme:
     Description: Bucket name for storing artifacts
     Type: String
-    Default: temp-harry-buck
   ApplicationName:
     Description: Application name
-    Type: String
-    Default: demoapp
-  GithubToken:
-    Description: Tokrm to access git repo
     Type: String
   RepositoryOwner:
     Description: Owner of repository from which code is to pulled
     Type: String
-    Default: hardeepjethwani
   RepositoryName:
     Description: Name of the code Repository
     Type: String
-    Default: stock-app-cloudformation
   ApplicationStackName:
     Description: Name of the stack that you want to deploy
     Type: String
-    Default: demostacky
-
-
 Resources:
-  PipelineExecutionRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com
-            Action:
-              - 'sts:AssumeRole'
-      Path: /
-      Policies:
-        - PolicyName: root
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action: '*'
-                Resource: '*'
-
   ArtifactStoreBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -102,7 +70,7 @@ Resources:
                 Repo: !Ref RepositoryName
                 PollForSourceChanges: "false"
                 Branch: "main"
-                OAuthToken: !Ref GithubToken
+                OAuthToken: '{{resolve:secretsmanager:stock-app-github-oauth:SecretString:OauthToken}}'
               OutputArtifacts:
                 - Name: SourceCode
               RunOrder: 1
@@ -121,15 +89,14 @@ Resources:
                 Capabilities: CAPABILITY_IAM
                 RoleArn: !GetAtt CloudformationRole.Arn
                 StackName: !Ref ApplicationStackName
-                TemplatePath: !Sub "SourceCode::infrastructure::s3-sample.yaml"
+                TemplatePath: !Sub "SourceCode::infrastructure/main-nested.yaml"
               RunOrder: 1
-
   GithubWebhook:
     Type: 'AWS::CodePipeline::Webhook'
     Properties:
       Authentication: GITHUB_HMAC
       AuthenticationConfiguration:
-        SecretToken: !Ref GithubToken
+        SecretToken: '{{resolve:secretsmanager:stock-app-github-oauth:SecretString:OauthToken}}'
       RegisterWithThirdParty: 'true'
       Filters:
         - JsonPath: "$.ref"
